@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <title>Asthma Buddy · Morning Puff Reminder</title>
+
+  <!-- PWA / iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#4f46e5">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="manifest" href="manifest.webmanifest">
+
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Poppins:wght@700&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body>
+  <div class="app">
+    <aside class="panel">
+      <header class="app-header">
+        <div class="brand"><span class="logo">🫁</span> <h1>Asthma Buddy</h1></div>
+        <label class="switch" title="Dark mode">
+          <input id="theme-toggle" type="checkbox"/>
+          <span class="slider"></span>
+          <span class="switch-label"><i class="fa-regular fa-moon"></i></span>
+        </label>
+      </header>
+
+      <div class="success-line" id="success-line" aria-live="polite"></div>
+
+      <form id="cfg-form">
+        <fieldset>
+          <legend>Child & medicine</legend>
+          <div class="form-group">
+            <i class="form-icon fa-solid fa-children icon-blue"></i>
+            <input id="child-name" type="text" placeholder="Child name" value="Little Khanjar"/>
+          </div>
+          <div class="grid-two">
+            <div class="form-group">
+              <i class="form-icon fa-solid fa-capsules icon-pink"></i>
+              <input id="med-name" type="text" placeholder="Medicine (e.g., Ventolin)" value="Ventolin"/>
+            </div>
+            <div class="form-group">
+              <i class="form-icon fa-solid fa-hashtag icon-gray"></i>
+              <input id="puffs" type="number" min="1" max="12" value="2" placeholder="Puffs"/>
+            </div>
+          </div>
+          <div class="form-group">
+            <i class="form-icon fa-solid fa-notes-medical icon-red"></i>
+            <input id="extra-note" type="text" placeholder="Notes (e.g., use spacer)"/>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Reminder</legend>
+          <div class="grid-two">
+            <div class="form-group">
+              <i class="form-icon fa-regular fa-clock icon-sky"></i>
+              <input id="alarm-time" type="time" value="07:30"/>
+            </div>
+            <div class="form-group select-wrap">
+              <i class="form-icon fa-solid fa-bell icon-amber"></i>
+              <select id="snooze-min" class="select">
+                <option value="5" selected>Snooze 5 min</option>
+                <option value="10">Snooze 10 min</option>
+                <option value="15">Snooze 15 min</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid-two">
+            <div class="form-group select-wrap">
+              <i class="form-icon fa-solid fa-music icon-purple"></i>
+              <select id="alarm-sound" class="select">
+                <option value="chime" selected>Chime (default)</option>
+                <option value="beep">Beep</option>
+                <option value="birds">Birds</option>
+                <option value="voice">My recorded voice</option>
+                <option value="file">Uploaded audio file</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <i class="form-icon fa-solid fa-volume-high icon-indigo"></i>
+              <input id="alarm-volume" type="range" min="0" max="1" step="0.01" value="0.85" />
+              <div class="range-label"><span>Quiet</span><span>Loud</span></div>
+            </div>
+          </div>
+
+          <!-- Voice tools -->
+          <div id="voice-tools" class="sound-tools hidden">
+            <div class="tools-header">
+              <strong>Record your own voice</strong>
+              <span class="muted">Tip: e.g., “Good morning! Time for 2 puffs of Ventolin.”</span>
+            </div>
+            <div class="rec-row">
+              <button type="button" id="rec-start" class="btn"><i class="fa-solid fa-microphone"></i> Start</button>
+              <button type="button" id="rec-stop" class="btn" disabled><i class="fa-solid fa-square"></i> Stop</button>
+              <button type="button" id="rec-play" class="btn btn-ghost" disabled><i class="fa-solid fa-play"></i> Preview</button>
+              <button type="button" id="rec-delete" class="btn btn-ghost" disabled><i class="fa-regular fa-trash-can"></i> Delete</button>
+              <div class="rec-meter" aria-hidden="true"><div id="rec-meter-bar"></div></div>
+            </div>
+            <div id="rec-status" class="muted">No recording saved yet.</div>
+          </div>
+
+          <!-- File tools -->
+          <div id="file-tools" class="sound-tools hidden">
+            <div class="tools-header">
+              <strong>Upload your own sound</strong>
+              <span class="muted">.mp3 / .wav / .m4a / .webm — short clips recommended</span>
+            </div>
+            <div class="rec-row">
+              <input id="file-input" type="file" accept="audio/*"/>
+              <button type="button" id="file-play" class="btn btn-ghost" disabled><i class="fa-solid fa-play"></i> Preview</button>
+              <button type="button" id="file-delete" class="btn btn-ghost" disabled><i class="fa-regular fa-trash-can"></i> Delete</button>
+            </div>
+            <div id="file-status" class="muted">No file uploaded.</div>
+          </div>
+
+          <div class="grid-two">
+            <div class="form-group">
+              <label class="row">
+                <input type="checkbox" id="sound-enabled" checked/>
+                <span>Play alarm sound</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="row">
+                <input type="checkbox" id="notify-enabled" />
+                <span>Show desktop notification</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button type="button" id="test-alarm" class="btn"><i class="fa-solid fa-volume-high"></i> Test alarm</button>
+            <button type="button" id="save-ics" class="btn btn-ghost"><i class="fa-regular fa-calendar"></i> Download calendar (.ics)</button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Quick actions</legend>
+          <div class="btn-row">
+            <button type="button" id="mark-now" class="btn primary"><i class="fa-solid fa-check"></i> Mark as taken now</button>
+            <button type="button" id="clear-today" class="btn btn-ghost"><i class="fa-regular fa-circle-xmark"></i> Clear today</button>
+          </div>
+        </fieldset>
+      </form>
+
+      <footer class="note">
+        <strong>Heads-up:</strong> Keep this tab open near alarm time. Add the daily event to your phone’s calendar for reliability. Audio/recording needs a user tap in some browsers.
+      </footer>
+    </aside>
+
+    <main class="content">
+      <section class="summary">
+        <div class="stat">
+          <div class="stat-num" id="streak">0</div>
+          <div class="stat-label">day streak</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="this-month">0</div>
+          <div class="stat-label">taken this month</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num" id="last-taken">—</div>
+          <div class="stat-label">last taken</div>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="section-title">Calendar</h2>
+        <div id="cal" class="calendar"></div>
+      </section>
+
+      <section class="logs">
+        <h2 class="section-title">Daily register</h2>
+        <div id="log-list" class="log-list"></div>
+        <div class="btn-row">
+          <button id="export-csv" class="btn btn-ghost"><i class="fa-solid fa-file-csv"></i> Export CSV</button>
+          <button id="print" class="btn btn-ghost"><i class="fa-solid fa-print"></i> Print</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Fullscreen alarm -->
+  <div id="alarm-overlay" class="alarm hidden" role="dialog" aria-modal="true" aria-labelledby="alarm-title">
+    <div class="alarm-card">
+      <div class="emoji">⏰</div>
+      <h3 id="alarm-title">Morning puff time!</h3>
+      <p id="alarm-desc">Please take <strong id="alarm-puffs">2</strong> puffs of <strong id="alarm-med">Ventolin</strong>.</p>
+      <div class="alarm-actions">
+        <button id="alarm-taken" class="btn primary"><i class="fa-solid fa-check"></i> Mark as taken</button>
+        <button id="alarm-snooze" class="btn"><i class="fa-regular fa-clock"></i> Snooze</button>
+        <button id="alarm-stop" class="btn btn-ghost"><i class="fa-solid fa-volume-xmark"></i> Stop sound</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+
+  <!-- Register Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js").catch(()=>{});
+    }
+  </script>
+</body>
+</html>
