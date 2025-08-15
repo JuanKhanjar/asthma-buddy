@@ -1,5 +1,5 @@
 (() => {
-  // iOS audio unlock on first tap/click
+  // --- Stronger iOS audio unlock on first interaction ---
   const unlockOnce = () => {
     try {
       const C = window.AudioContext || window.webkitAudioContext;
@@ -12,7 +12,9 @@
   window.addEventListener("touchend", unlockOnce, { once: true });
   window.addEventListener("click", unlockOnce, { once: true });
 
-  // ===== SELECTORS (same as previous version) =====
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+
+  // ===== SELECTORS =====
   const el = {
     themeToggle: document.getElementById("theme-toggle"),
     success: document.getElementById("success-line"),
@@ -56,15 +58,17 @@
     alarmTaken: document.getElementById("alarm-taken"),
     alarmSnooze: document.getElementById("alarm-snooze"),
     alarmStop: document.getElementById("alarm-stop"),
+    tipPuffs: document.getElementById("tip-puffs"),
+    tipMed: document.getElementById("tip-med"),
   };
 
   // ===== STORAGE =====
-  const STORE = "asthma_buddy_v3_audio_scroll";
+  const STORE = "asthma_buddy_v4_ios_codec";
   const state = JSON.parse(localStorage.getItem(STORE) || JSON.stringify({
     theme:"light", child:"Little Khanjar", med:"Ventolin", puffs:2, note:"",
     alarmTime:"07:30", snoozeMin:5,
     soundEnabled:true, notifyEnabled:false,
-    alarmSound:"chime", alarmVolume:0.85,
+    alarmSound:"chime", alarmVolume:0.9,
     logs:{}, lastAlarmFire:null, nextSnoozeAt:null
   }));
   const save = ()=>localStorage.setItem(STORE, JSON.stringify(state));
@@ -79,12 +83,16 @@
   el.themeToggle.addEventListener("change", ()=>{ state.theme = el.themeToggle.checked ? "dark":"light"; setTheme(state.theme); save(); });
 
   // ===== INIT FORM =====
+  const syncTips = () => { el.tipPuffs.textContent = state.puffs; el.tipMed.textContent = state.med; };
   el.child.value=state.child; el.med.value=state.med; el.puffs.value=state.puffs; el.note.value=state.note;
   el.alarmTime.value=state.alarmTime; el.snoozeMin.value=state.snoozeMin;
   el.soundEnabled.checked=!!state.soundEnabled; el.notifyEnabled.checked=!!state.notifyEnabled;
-  el.alarmSound.value=state.alarmSound||"chime"; el.alarmVolume.value=state.alarmVolume??0.85;
+  el.alarmSound.value=state.alarmSound||"chime"; el.alarmVolume.value=state.alarmVolume??0.9; syncTips();
 
-  function toggleSoundTools(){ el.voiceTools.classList.toggle("hidden", el.alarmSound.value!=="voice"); el.fileTools.classList.toggle("hidden", el.alarmSound.value!=="file"); }
+  function toggleSoundTools(){
+    el.voiceTools.classList.toggle("hidden", el.alarmSound.value!=="voice");
+    el.fileTools.classList.toggle("hidden", el.alarmSound.value!=="file");
+  }
   toggleSoundTools();
 
   el.cfgForm.addEventListener("input", ()=>{
@@ -98,16 +106,16 @@
     state.notifyEnabled = !!el.notifyEnabled.checked;
     state.alarmSound = el.alarmSound.value;
     state.alarmVolume = +el.alarmVolume.value;
-    save(); renderAlarmCard(); renderUI(); toggleSoundTools();
+    save(); renderAlarmCard(); renderUI(); toggleSoundTools(); syncTips();
   });
 
   // ===== AUDIO =====
   let audioCtx=null, alarmLoopTimer=null, alarmAudioEl=null, alarmAudioURL=null;
   const ensureAudioContext=()=>{ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; };
-  const beep=(ctx,f=880,d=400,v=0.85)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type="sine"; o.frequency.value=f; const t=Math.max(0.05,Math.min(1,v))*0.6; g.gain.setValueAtTime(0.0001,ctx.currentTime); g.gain.exponentialRampToValueAtTime(t,ctx.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+d/1000); o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+d/1000+0.05); };
+  const beep=(ctx,f=880,d=400,v=0.9)=>{ const o=ctx.createOscillator(), g=ctx.createGain(); o.type="sine"; o.frequency.value=f; const t=Math.max(0.05,Math.min(1,v))*0.6; g.gain.setValueAtTime(0.0001,ctx.currentTime); g.gain.exponentialRampToValueAtTime(t,ctx.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.0001,ctx.currentTime+d/1000); o.connect(g); g.connect(ctx.destination); o.start(); o.stop(ctx.currentTime+d/1000+0.05); };
   const startPattern=(kind)=>{ if(!state.soundEnabled) return; const ctx=ensureAudioContext(); stopPattern();
     if(kind==="chime"){ beep(ctx,880,450,state.alarmVolume); alarmLoopTimer=setInterval(()=>{ beep(ctx,880,450,state.alarmVolume); setTimeout(()=>beep(ctx,660,350,state.alarmVolume),250); },1800); }
-    else if(kind==="beep"){ beep(ctx,1000,200,state.alarmVolume); alarmLoopTimer=setInterval(()=>beep(ctx,1000,200,state.alarmVolume),600); }
+    else if(kind==="beep"){ beep(ctx,1000,220,state.alarmVolume); alarmLoopTimer=setInterval(()=>beep(ctx,1000,220,state.alarmVolume),600); }
     else if(kind==="birds"){ const chirp=()=>{ beep(ctx,2400,120,state.alarmVolume); setTimeout(()=>beep(ctx,1800,120,state.alarmVolume),120); setTimeout(()=>beep(ctx,2200,120,state.alarmVolume),260); }; chirp(); alarmLoopTimer=setInterval(chirp,1800); } };
   const stopPattern=()=>{ if(alarmLoopTimer){ clearInterval(alarmLoopTimer); alarmLoopTimer=null; } };
   const playBlobLoop=async(blob)=>{ if(!state.soundEnabled||!blob) return; stopBlob(); const url=URL.createObjectURL(blob); const a=new Audio(url); a.loop=true; a.volume=Math.max(0,Math.min(1,state.alarmVolume)); try{ await a.play(); }catch{} alarmAudioEl=a; alarmAudioURL=url; };
@@ -122,26 +130,51 @@
     del:async(k)=>{ const db=idb.db||await idb.open(); return new Promise((res,rej)=>{ const tx=db.transaction("sounds","readwrite"); tx.objectStore("sounds").delete(k); tx.oncomplete=()=>res(); tx.onerror=()=>rej(tx.error); }); }
   };
 
-  // ===== Recording =====
-  let recStream=null, rec=null, recChunks=[], meterRAF=null, analyser=null;
-  const updateRecStatus=async()=>{ const has=await idb.get("voice"); el.recStatus.textContent = has ? "Recording saved." : "No recording saved yet."; el.recPlay.disabled=!has; el.recDelete.disabled=!has; };
-  document.getElementById("rec-start").addEventListener("click", async ()=>{
+  // ===== Recording (codec picker for iOS) =====
+  const pickMime = () => {
+    const cand = [
+      "audio/mp4",                       // m4a – best for iOS
+      "audio/mp4;codecs=mp4a.40.2",
+      "audio/aac",
+      "audio/mpeg",                      // mp3
+      "audio/webm;codecs=opus",         // Chrome
+      "audio/webm"
+    ];
+    for (const t of cand) {
+      try { if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(t)) return t; } catch {}
+    }
+    return ""; // let browser decide
+  };
+
+  let recStream=null, rec=null, recChunks=[], meterRAF=null, analyser=null, mimeSel=pickMime();
+  const updateRecStatus=async()=>{ const has=await idb.get("voice"); el.recStatus.textContent = has ? `Recording saved (${mimeSel||"auto"})` : "No recording saved yet."; el.recPlay.disabled=!has; el.recDelete.disabled=!has; };
+
+  el.recStart.addEventListener("click", async ()=>{
     try{ recStream=await navigator.mediaDevices.getUserMedia({audio:true}); }catch{ alert("Microphone permission denied."); return; }
     const ctx=ensureAudioContext(); const src=ctx.createMediaStreamSource(recStream); analyser=ctx.createAnalyser(); analyser.fftSize=1024; src.connect(analyser);
     const draw=()=>{ const buf=new Uint8Array(analyser.fftSize); analyser.getByteTimeDomainData(buf); let sum=0; for(let i=0;i<buf.length;i++){ const v=(buf[i]-128)/128; sum+=v*v; } const rms=Math.sqrt(sum/buf.length); el.recMeterBar.style.width=`${Math.min(100,Math.max(0,rms*150))}%`; meterRAF=requestAnimationFrame(draw); }; meterRAF=requestAnimationFrame(draw);
-    recChunks=[]; rec=new MediaRecorder(recStream); rec.ondataavailable=e=>e.data&&recChunks.push(e.data);
-    rec.onstop=async()=>{ cancelAnimationFrame(meterRAF); meterRAF=null; if(recStream){ recStream.getTracks().forEach(t=>t.stop()); recStream=null; } document.getElementById("rec-stop").disabled=true; const blob=new Blob(recChunks,{type:"audio/webm"}); await idb.put("voice",blob); await updateRecStatus(); showOk("Recording saved"); };
-    rec.start(); document.getElementById("rec-start").disabled=true; document.getElementById("rec-stop").disabled=false; el.recStatus.textContent="Recording… speak now.";
+
+    recChunks=[]; try{
+      rec=new MediaRecorder(recStream, mimeSel ? { mimeType: mimeSel } : undefined);
+    }catch{ rec=new MediaRecorder(recStream); }
+    rec.ondataavailable=e=>e.data&&recChunks.push(e.data);
+    rec.onstop=async()=>{ cancelAnimationFrame(meterRAF); meterRAF=null; if(recStream){ recStream.getTracks().forEach(t=>t.stop()); recStream=null; } el.recStop.disabled=true;
+      const type = rec.mimeType || mimeSel || "audio/mp4";
+      const blob=new Blob(recChunks,{type});
+      await idb.put("voice",blob); await updateRecStatus(); showOk("Recording saved");
+    };
+    rec.start(); el.recStart.disabled=true; el.recStop.disabled=false; el.recStatus.textContent="Recording… speak now.";
   });
-  document.getElementById("rec-stop").addEventListener("click", ()=>{ if(rec&&rec.state!=="inactive") rec.stop(); document.getElementById("rec-start").disabled=false; });
-  document.getElementById("rec-play").addEventListener("click", async ()=>{ const blob=await idb.get("voice"); if(!blob) return; const url=URL.createObjectURL(blob); const a=new Audio(url); a.volume=Math.max(0,Math.min(1,state.alarmVolume)); a.play().finally(()=>URL.revokeObjectURL(url)); });
-  document.getElementById("rec-delete").addEventListener("click", async ()=>{ await idb.del("voice"); await updateRecStatus(); showOk("Recording deleted"); });
+
+  el.recStop.addEventListener("click", ()=>{ if(rec&&rec.state!=="inactive") rec.stop(); el.recStart.disabled=false; });
+  el.recPlay.addEventListener("click", async ()=>{ const blob=await idb.get("voice"); if(!blob) return; const url=URL.createObjectURL(blob); const a=new Audio(url); a.volume=Math.max(0,Math.min(1,state.alarmVolume)); a.play().finally(()=>URL.revokeObjectURL(url)); });
+  el.recDelete.addEventListener("click", async ()=>{ await idb.del("voice"); await updateRecStatus(); showOk("Recording deleted"); });
 
   // ===== File upload =====
-  const updateFileStatus=async()=>{ const blob=await idb.get("file"); el.fileStatus.textContent = blob ? "File saved." : "No file uploaded."; document.getElementById("file-play").disabled=!blob; document.getElementById("file-delete").disabled=!blob; };
-  document.getElementById("file-input").addEventListener("change", async (e)=>{ const f=e.target.files?.[0]; if(!f) return; await idb.put("file",f); await updateFileStatus(); showOk("Audio file saved"); e.target.value=""; });
-  document.getElementById("file-play").addEventListener("click", async ()=>{ const blob=await idb.get("file"); if(!blob) return; const url=URL.createObjectURL(blob); const a=new Audio(url); a.volume=Math.max(0,Math.min(1,state.alarmVolume)); a.play().finally(()=>URL.revokeObjectURL(url)); });
-  document.getElementById("file-delete").addEventListener("click", async ()=>{ await idb.del("file"); await updateFileStatus(); showOk("Audio file deleted"); });
+  const updateFileStatus=async()=>{ const blob=await idb.get("file"); el.fileStatus.textContent = blob ? "File saved." : "No file uploaded."; el.filePlay.disabled=!blob; el.fileDelete.disabled=!blob; };
+  el.fileInput.addEventListener("change", async (e)=>{ const f=e.target.files?.[0]; if(!f) return; await idb.put("file",f); await updateFileStatus(); showOk("Audio file saved"); e.target.value=""; });
+  el.filePlay.addEventListener("click", async ()=>{ const blob=await idb.get("file"); if(!blob) return; const url=URL.createObjectURL(blob); const a=new Audio(url); a.volume=Math.max(0,Math.min(1,state.alarmVolume)); a.play().finally(()=>URL.revokeObjectURL(url)); });
+  el.fileDelete.addEventListener("click", async ()=>{ await idb.del("file"); await updateFileStatus(); showOk("Audio file deleted"); });
 
   // ===== Notifications =====
   const ensureNotifyPermission=async()=>{ if(!state.notifyEnabled) return false; if(!("Notification" in window)) return false; if(Notification.permission==="granted") return true; try{ const p=await Notification.requestPermission(); return p==="granted"; }catch{ return false; } };
@@ -156,14 +189,14 @@
   const markTaken=(when=new Date())=>{ const key=when.toISOString().slice(0,10); state.logs[key]={ taken:true, time:fmtTime(when), puffs:state.puffs, med:state.med, note:state.note }; state.lastAlarmFire=key; state.nextSnoozeAt=null; save(); closeAlarm(); showOk("Marked as taken — great job!"); renderUI(); };
   const snooze=()=>{ const ms=(+state.snoozeMin||5)*60*1000; state.nextSnoozeAt=Date.now()+ms; save(); closeAlarm(); showOk(`Snoozed for ${state.snoozeMin} min`); };
 
-  // ===== Main loop =====
+  // ===== Main loop (foreground) =====
   const timeToMsToday=(t)=>{ const [hh,mm]=(t||"07:30").split(":").map(x=>+x); const now=new Date(); const d=new Date(now.getFullYear(),now.getMonth(),now.getDate(),hh,mm,0,0); return d.getTime(); };
   const loop=async()=>{ const now=Date.now(); const todayKey=today();
     if(state.nextSnoozeAt && now>=state.nextSnoozeAt){ state.nextSnoozeAt=null; save(); await notify("Asthma Buddy","Snooze ended — time to take your puffs."); openAlarm(); return; }
     const done=!!state.logs[todayKey]?.taken; const alarmMs=timeToMsToday(state.alarmTime); const windowMs=60*1000;
     if(!done && (!state.lastAlarmFire || state.lastAlarmFire!==todayKey)){ if(Math.abs(now-alarmMs)<=windowMs){ state.lastAlarmFire=todayKey; save(); await notify("Asthma Buddy","It’s time for the morning puff."); openAlarm(); } }
   };
-  setInterval(loop, 5000);
+  setInterval(loop, 4000);
 
   // ===== Calendar & Logs =====
   const renderCalendar=()=>{ const mount=el.cal; mount.innerHTML=""; const now=new Date(); const y=now.getFullYear(), m=now.getMonth(); const first=new Date(y,m,1); const start=first.getDay(); const days=new Date(y,m+1,0).getDate(); const padStart=(start+6)%7;
@@ -195,7 +228,7 @@
 
   // Init
   (async ()=>{ await updateRecStatus(); await updateFileStatus(); })();
-  renderUI(); loop(); setInterval(loop, 5000);
+  renderUI(); loop(); setInterval(loop, 4000);
 
   // ===== ICS helpers =====
   function makeICSDaily(person,title,timeHHMM){

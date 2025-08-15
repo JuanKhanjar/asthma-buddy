@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Asthma Buddy · Morning Puff Reminder</title>
 
   <!-- PWA / iOS -->
@@ -24,9 +24,9 @@
   <div class="app">
     <aside class="panel">
       <header class="app-header">
-        <div class="brand"><span class="logo">🫁</span> <h1>Asthma Buddy</h1></div>
+        <div class="brand"><span class="logo">🫁</span><h1>Asthma Buddy</h1></div>
         <label class="switch" title="Dark mode">
-          <input id="theme-toggle" type="checkbox"/>
+          <input id="theme-toggle" type="checkbox" />
           <span class="slider"></span>
           <span class="switch-label"><i class="fa-regular fa-moon"></i></span>
         </label>
@@ -48,7 +48,7 @@
             </div>
             <div class="form-group">
               <i class="form-icon fa-solid fa-hashtag icon-gray"></i>
-              <input id="puffs" type="number" min="1" max="12" value="2" placeholder="Puffs"/>
+              <input id="puffs" type="number" inputmode="numeric" min="1" max="12" value="2" placeholder="Puffs"/>
             </div>
           </div>
           <div class="form-group">
@@ -87,7 +87,7 @@
             </div>
             <div class="form-group">
               <i class="form-icon fa-solid fa-volume-high icon-indigo"></i>
-              <input id="alarm-volume" type="range" min="0" max="1" step="0.01" value="0.85" />
+              <input id="alarm-volume" type="range" min="0" max="1" step="0.01" value="0.9" />
               <div class="range-label"><span>Quiet</span><span>Loud</span></div>
             </div>
           </div>
@@ -96,7 +96,7 @@
           <div id="voice-tools" class="sound-tools hidden">
             <div class="tools-header">
               <strong>Record your own voice</strong>
-              <span class="muted">Tip: e.g., “Good morning! Time for 2 puffs of Ventolin.”</span>
+              <span class="muted">Tip: “Good morning! Time for <span id="tip-puffs">2</span> puffs of <span id="tip-med">Ventolin</span>.”</span>
             </div>
             <div class="rec-row">
               <button type="button" id="rec-start" class="btn"><i class="fa-solid fa-microphone"></i> Start</button>
@@ -112,7 +112,7 @@
           <div id="file-tools" class="sound-tools hidden">
             <div class="tools-header">
               <strong>Upload your own sound</strong>
-              <span class="muted">.mp3 / .wav / .m4a / .webm — short clips recommended</span>
+              <span class="muted">Supports .m4a/.mp3/.wav/.webm (iPhone plays m4a/mp3/wav best)</span>
             </div>
             <div class="rec-row">
               <input id="file-input" type="file" accept="audio/*"/>
@@ -124,17 +124,16 @@
 
           <div class="grid-two">
             <div class="form-group">
-              <label class="row">
-                <input type="checkbox" id="sound-enabled" checked/>
-                <span>Play alarm sound</span>
-              </label>
+              <label class="row"><input type="checkbox" id="sound-enabled" checked/><span>Play alarm sound</span></label>
             </div>
             <div class="form-group">
-              <label class="row">
-                <input type="checkbox" id="notify-enabled" />
-                <span>Show desktop notification</span>
-              </label>
+              <label class="row"><input type="checkbox" id="notify-enabled"/><span>Show notification</span></label>
             </div>
+          </div>
+
+          <div class="hintline">
+            <i class="fa-solid fa-circle-info"></i>
+            <span>On iPhone, keep the app open near alarm time (or add the daily event below for background alerts). Make sure the side **Silent** switch is off.</span>
           </div>
 
           <div class="btn-row">
@@ -153,24 +152,15 @@
       </form>
 
       <footer class="note">
-        <strong>Heads-up:</strong> Keep this tab open near alarm time. Add the daily event to your phone’s calendar for reliability. Audio/recording needs a user tap in some browsers.
+        <strong>Heads-up:</strong> Install to Home Screen for full-screen and offline. Audio needs one tap the first time.
       </footer>
     </aside>
 
     <main class="content">
       <section class="summary">
-        <div class="stat">
-          <div class="stat-num" id="streak">0</div>
-          <div class="stat-label">day streak</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num" id="this-month">0</div>
-          <div class="stat-label">taken this month</div>
-        </div>
-        <div class="stat">
-          <div class="stat-num" id="last-taken">—</div>
-          <div class="stat-label">last taken</div>
-        </div>
+        <div class="stat"><div class="stat-num" id="streak">0</div><div class="stat-label">day streak</div></div>
+        <div class="stat"><div class="stat-num" id="this-month">0</div><div class="stat-label">taken this month</div></div>
+        <div class="stat"><div class="stat-num" id="last-taken">—</div><div class="stat-label">last taken</div></div>
       </section>
 
       <section>
@@ -204,12 +194,8 @@
   </div>
 
   <script src="script.js"></script>
-
-  <!-- Register Service Worker -->
   <script>
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.register("sw.js").catch(()=>{});
-    }
+    if ("serviceWorker" in navigator) { navigator.serviceWorker.register("sw.js").catch(()=>{}); }
   </script>
 </body>
 </html>
